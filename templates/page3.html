@@ -3,10 +3,10 @@
 {% block content %}
 <div class="container my-4">
   
-  <!-- 🔍 Google หมากรุก Hero Search Bar -->
+  <!-- 🔍 Google หมากรุก Search Bar -->
   <div class="card shadow-sm border-0 p-4 mb-4 text-center bg-white rounded-4">
-    <h2 class="fw-bold text-dark mb-2">🔎 Google หมากรุก & คลังความรู้กลยุทธ์</h2>
-    <p class="text-muted mb-3">ค้นหารูปแบบการเปิดหมาก, วิดีโอสอน และถอดรหัสวิธีคิดเชิงระบบ (Systems Thinking)</p>
+    <h2 class="fw-bold text-dark mb-1">🔎 Google หมากรุก & คลังวิดีโอกลยุทธ์</h2>
+    <p class="text-muted mb-3">สืบค้นทฤษฎีเปิดหมาก วิดีโอสอนจริง และถอดรหัสวิธีคิดเชิงระบบ (Systems Thinking)</p>
     
     <div class="row justify-content-center">
       <div class="col-md-8">
@@ -16,7 +16,7 @@
             type="text" 
             id="chessSearchInput" 
             class="form-control border-0 px-2 fs-6" 
-            placeholder="ค้นหาชื่อรูปเกม (เช่น Italian, C50, หรือ คำว่า 'บุก', 'ตั้งรับ')..."
+            placeholder="ค้นหาชื่อรูปเกม (เช่น Italian, B20) หรือคำว่า 'บุก', 'ตั้งรับ'..."
             onkeyup="filterChessOpenings()"
           >
           <button class="btn btn-primary px-4 fw-bold" type="button" onclick="filterChessOpenings()">ค้นหา</button>
@@ -24,12 +24,12 @@
       </div>
     </div>
 
-    <!-- หมวดหมู่ Tag Filter -->
+    <!-- YouTube-style Filter Chips -->
     <div class="d-flex justify-content-center flex-wrap gap-2 mt-3">
       {% for cat in categories %}
       <button 
         type="button" 
-        class="btn btn-sm btn-outline-secondary rounded-pill px-3 filter-pill {% if loop.first %}active{% endif %}" 
+        class="btn btn-sm btn-outline-secondary rounded-pill px-3 filter-pill {% if loop.first %}active btn-secondary text-white{% endif %}" 
         onclick="filterByCategory('{{ cat }}', this)"
       >
         {{ cat }}
@@ -38,13 +38,66 @@
     </div>
   </div>
 
-  <!-- 🃏 รายการการ์ดรูปเปิด พร้อมวิดีโอ และบทเรียน -->
+  <!-- =================================================================== -->
+  <!-- ⚡ ส่วนที่ 1: ฟีดแนะนำสำหรับคุณโดยเฉพาะ (YouTube For You Feed) -->
+  <!-- =================================================================== -->
+  <div class="mb-5" id="forYouSection">
+    <div class="d-flex align-items-center gap-2 mb-3">
+      <h4 class="fw-bold text-dark mb-0">⚡ วิดีโอแนะนำสำหรับคุณโดยเฉพาะ (Recommended Feed)</h4>
+      <span class="badge bg-danger rounded-pill">Personalized AI</span>
+    </div>
+    <p class="small text-muted mb-3">ระบบคัดเลือกวิดีโอเหล่านี้โดยวิเคราะห์จากสถิติเกม ประวัติการแพ้ และจุดอ่อนในโปรไฟล์ของคุณ</p>
+
+    <div class="row g-4">
+      {% for item in personalized_feed %}
+      <div class="col-lg-6">
+        <div class="card h-100 shadow-sm border-0 rounded-4 overflow-hidden bg-white">
+          <!-- Video Embed -->
+          <div class="ratio ratio-16x9 bg-dark">
+            <iframe 
+              src="https://www.youtube-nocookie.com/embed/{{ item.youtube_id }}" 
+              title="{{ item.name }}" 
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+              allowfullscreen
+              class="border-0"
+            ></iframe>
+          </div>
+          
+          <div class="card-body p-3 d-flex flex-column">
+            <!-- Context Pill บ่งบอกสาเหตุที่แนะนำคลิปนี้ -->
+            <div class="mb-2">
+              <span class="badge bg-{{ item.tag_color }} rounded-pill px-3 py-1.5">{{ item.feed_tag }}</span>
+            </div>
+            <h5 class="fw-bold text-dark mb-1">{{ item.name }}</h5>
+            <div class="alert alert-light border small text-dark py-2 px-3 mb-2 rounded-3">
+              💡 <strong>เหตุผลที่แนะนำ:</strong> {{ item.feed_reason }}
+            </div>
+            <p class="small text-muted mb-3">{{ item.summary }}</p>
+            
+            <a href="/page1" class="btn btn-outline-primary btn-sm rounded-pill fw-semibold mt-auto">
+              ⚔️ นำรูปนี้ไปซ้อมกับ AI ใน Arena (หน้า 1)
+            </a>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- =================================================================== -->
+  <!-- 📚 ส่วนที่ 2: สารานุกรม & วิดีโอทั้งหมด (All Knowledge Base) -->
+  <!-- =================================================================== -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="fw-bold text-dark mb-0">📚 คลังรูปเปิดและบทเรียนทั้งหมด (All Openings)</h4>
+    <span class="text-muted small">รวม {{ total_openings }} รูปแบบ</span>
+  </div>
+
   <div class="row g-4" id="openingsGrid">
-    {% for op in openings %}
+    {% for op in all_openings %}
     <div class="col-lg-4 col-md-6 opening-card-wrapper" data-category="{{ op.category }}" data-search="{{ op.name }} {{ op.eco }} {{ op.category }} {{ op.moves }} {{ op.summary }}">
       <div class="card h-100 shadow-sm border-0 rounded-4 overflow-hidden bg-white d-flex flex-column">
         
-        <!-- 🎬 YouTube Video Embed -->
+        <!-- Video Player -->
         <div class="ratio ratio-16x9 bg-dark">
           <iframe 
             src="https://www.youtube-nocookie.com/embed/{{ op.youtube_id }}" 
@@ -56,20 +109,17 @@
         </div>
 
         <div class="card-body p-3 d-flex flex-column">
-          <!-- Badges -->
           <div class="d-flex justify-content-between align-items-center mb-2">
             <span class="badge bg-{{ op.badge_color }} rounded-pill">{{ op.category }}</span>
             <span class="badge bg-light text-dark border font-monospace">{{ op.eco }}</span>
           </div>
 
-          <!-- Title & Moves -->
           <h5 class="fw-bold text-dark mb-1">{{ op.name }}</h5>
           <code class="d-block text-primary small mb-2 bg-light p-1.5 rounded">{{ op.moves }}</code>
           <p class="small text-muted mb-3">{{ op.summary }}</p>
 
-          <!-- Deep Advice Accordion (คำแนะนำเชิงลึก) -->
+          <!-- Accordion คำแนะนำเชิงลึก -->
           <div class="accordion accordion-flush mt-auto" id="acc-{{ op.id }}">
-            
             <div class="accordion-item border-0 bg-light rounded-3 mb-2">
               <h2 class="accordion-header">
                 <button class="accordion-button collapsed py-2 px-3 small fw-bold bg-transparent text-primary" type="button" data-bs-toggle="collapse" data-bs-target="#plan-{{ op.id }}">
@@ -77,9 +127,7 @@
                 </button>
               </h2>
               <div id="plan-{{ op.id }}" class="accordion-collapse collapse" data-bs-parent="#acc-{{ op.id }}">
-                <div class="accordion-body small text-muted py-2 px-3">
-                  {{ op.key_plan }}
-                </div>
+                <div class="accordion-body small text-muted py-2 px-3">{{ op.key_plan }}</div>
               </div>
             </div>
 
@@ -90,9 +138,7 @@
                 </button>
               </h2>
               <div id="trap-{{ op.id }}" class="accordion-collapse collapse" data-bs-parent="#acc-{{ op.id }}">
-                <div class="accordion-body small text-muted py-2 px-3">
-                  {{ op.tunnel_trap }}
-                </div>
+                <div class="accordion-body small text-muted py-2 px-3">{{ op.tunnel_trap }}</div>
               </div>
             </div>
 
@@ -103,16 +149,12 @@
                 </button>
               </h2>
               <div id="system-{{ op.id }}" class="accordion-collapse collapse" data-bs-parent="#acc-{{ op.id }}">
-                <div class="accordion-body small text-muted py-2 px-3">
-                  {{ op.systems_lesson }}
-                </div>
+                <div class="accordion-body small text-muted py-2 px-3">{{ op.systems_lesson }}</div>
               </div>
             </div>
-
           </div>
         </div>
 
-        <!-- Card Footer (ปุ่มลิงก์ไปหน้าเล่น) -->
         <div class="card-footer bg-white border-top-0 p-3 pt-0">
           <a href="/page1" class="btn btn-outline-primary btn-sm w-100 rounded-pill fw-semibold">
             ⚔️ นำรูปนี้ไปฝึกใน AI Arena (หน้า 1)
@@ -124,28 +166,35 @@
     {% endfor %}
   </div>
 
-  <!-- กล่องแสดงกรณีค้นหาไม่เจอ -->
   <div id="noResultsAlert" class="alert alert-warning text-center rounded-4 mt-4 d-none">
     🔍 ไม่พบรูปเปิดหมากที่ตรงกับคำค้นหา ลองค้นหาด้วยคำอื่นดูนะครับ
   </div>
 
 </div>
 
-<!-- ⚡ JavaScript สำหรับระบบค้นหาและ Filter ทันทีโดยไม่ต้องโหลดเว็บใหม่ -->
+<!-- ⚡ Client-side Search & Category Filtering Script -->
 <script>
 let currentCategory = "ทั้งหมด";
 
 function filterChessOpenings() {
   const query = document.getElementById("chessSearchInput").value.toLowerCase().trim();
   const cards = document.querySelectorAll(".opening-card-wrapper");
+  const forYouSec = document.getElementById("forYouSection");
   let visibleCount = 0;
+
+  // ซ่อนฟีดส่วนตัวถ้ากำลังพิมพ์ค้นหาคำเฉพาะเจาะจง
+  if (query !== "" || currentCategory !== "ทั้งหมด") {
+    if (forYouSec) forYouSec.classList.add("d-none");
+  } else {
+    if (forYouSec) forYouSec.classList.remove("d-none");
+  }
 
   cards.forEach(card => {
     const searchText = card.getAttribute("data-search").toLowerCase();
     const cardCategory = card.getAttribute("data-category");
 
     const matchesQuery = query === "" || searchText.includes(query);
-    const matchesCategory = currentCategory === "ทั้งหมด" || cardCategory === currentCategory;
+    const matchesCategory = currentCategory === "ทั้งหมด" || currentCategory === "⚡ แนะนำสำหรับคุณ" || cardCategory === currentCategory;
 
     if (matchesQuery && matchesCategory) {
       card.classList.remove("d-none");
@@ -166,15 +215,21 @@ function filterChessOpenings() {
 function filterByCategory(category, element) {
   currentCategory = category;
   
-  // อัปเดตสีปุ่ม Filter
   document.querySelectorAll(".filter-pill").forEach(btn => {
-    btn.classList.remove("active", "btn-secondary");
+    btn.classList.remove("active", "btn-secondary", "text-white");
     btn.classList.add("btn-outline-secondary");
   });
-  element.classList.add("active", "btn-secondary");
+  element.classList.add("active", "btn-secondary", "text-white");
   element.classList.remove("btn-outline-secondary");
 
-  filterChessOpenings();
+  const forYouSec = document.getElementById("forYouSection");
+  if (category === "⚡ แนะนำสำหรับคุณ") {
+    if (forYouSec) forYouSec.classList.remove("d-none");
+    document.getElementById("openingsGrid").classList.add("d-none");
+  } else {
+    document.getElementById("openingsGrid").classList.remove("d-none");
+    filterChessOpenings();
+  }
 }
 </script>
 {% endblock %}
