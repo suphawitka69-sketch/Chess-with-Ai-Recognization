@@ -5,6 +5,7 @@ import { OpeningBook } from '../core/pedagogy/OpeningBook';
 import { enrichGameOpening } from '../core/pedagogy/OpeningEnrichment';
 import { getEnginePool } from './useEngineStore';
 import { db } from '../data/db';
+import { syncGameSummary } from '../data/api/RemoteGameSync';
 import { profileRepository } from '../data/repositories/ProfileRepository';
 import type { MoveRecord, PieceColor, PromotionPiece } from '../core/chess/GameEngine';
 import type {
@@ -333,6 +334,8 @@ export const useAnalysisStore = create<AnalysisStore>()((set) => ({
             openings: openingResult.summary,
           });
         });
+        const updatedGame = await db.games.get(gameId);
+        if (updatedGame) await syncGameSummary(updatedGame);
         await profileRepository.syncProfileFromGames();
         if (controller.signal.aborted) return;
 

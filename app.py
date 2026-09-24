@@ -30,7 +30,9 @@ import time
 import traceback
 from urllib.parse import urlsplit
 
-from flask import Flask, redirect, render_template, request, url_for
+from flask import Flask, jsonify, make_response, redirect, render_template, request, url_for
+
+import storage
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PAGES_DIR = os.path.join(HERE, "pages")
@@ -149,6 +151,84 @@ def inject_globals():
 
 def not_built(name, reason, detail=""):
     return render_template("_not_built.html", page=name, reason=reason, detail=detail), 200
+
+
+def add_api_headers(response):
+    if isinstance(response, (dict, list)):
+        response = jsonify(response)
+    else:
+        response = make_response(response)
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    return response
+
+
+def game_to_history_row(game):
+    player_color = game.get("setup", {}).get("playerColor", "w")
+    opponent = game.get("setup", {}).get("opponent", {})
+    result = game.get("result", {})
+    accuracy = game.get("accuracy") or {}
+    counts = accuracy.get("counts") or {}
+    openings = game.get("openings") or {}
+    behavior = game.get("behaviorSummary") or {}
+    opponent_label = opponent.get("label") or "Chess Coach"
+    player_name = "Player (คุณ)"
+    if player_color == "w":
+        white, black = player_name, opponent_label
+    else:
+        white, black = opponent_label, player_name
+
+    outcome = result.get("outcome", "draw")
+    if outcome == "win":
+        result_text = "1-0" if player_color == "w" else "0-1"
+    elif outcome == "loss":
+        result_text = "0-1" if player_color == "w" else "1-0"
+    else:
+        result_text = "1/2-1/2"
+
+    notes = "เกมจาก Chess Coach"
+    if behavior.get("avgPanicScore", 0) > 0.6:
+        notes += " · พบช่วงกดดันสูง"
+
+    return {
+        "id": game.get("gameId"),
+        "game_id": game.get("gameId", ""),
+        "date": game.get("endedAt", "")[:10],
+        "white": white,
+        "black": black,
+        "opening": openings.get("name") or "ยังไม่วิเคราะห์",
+        "eco": openings.get("ecoCode") or "",
+        "result": result_text,
+        "accuracy": accuracy.get("playerAccuracyPct", 0),
+        "blunders": counts.get("blunder", 0),
+        "notes": notes,
+    }
+
+
+@app.route("/api/games", methods=["GET", "POST", "OPTIONS"])
+def api_games():
+    if request.method == "OPTIONS":
+        return add_api_headers("")
+    if request.method == "GET":
+        return add_api_headers({"games": storage.load()})
+
+    game = request.get_json(silent=True)
+    if not isinstance(game, dict) or not game.get("gameId"):
+        return add_api_headers({"error": "gameId is required"}), 400
+
+    items = storage.load()
+    new_row = game_to_history_row(game)
+    replaced = False
+    for index, item in enumerate(items):
+        if item.get("game_id") == new_row["game_id"]:
+            items[index] = new_row
+            replaced = True
+            break
+    if not replaced:
+        items.append(new_row)
+    storage.save(items)
+    return add_api_headers({"ok": True, "game": new_row})
 
 
 # ---------- routes ----------

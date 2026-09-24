@@ -47,6 +47,7 @@ import {
 import { Clock, type ClockColor, type ClockConfig, type ClockSnapshot } from '../core/chess/Clock';
 import { getEnginePool, useEngineStore } from './useEngineStore';
 import { gameRepository } from '../data/repositories/GameRepository';
+import { syncGameSummary } from '../data/api/RemoteGameSync';
 import { profileRepository } from '../data/repositories/ProfileRepository';
 import { db } from '../data/db';
 import { PanicCalculator } from '../core/telemetry/PanicCalculator';
@@ -497,6 +498,7 @@ export const useGameStore = create<GameStore>()((set, get) => {
       pendingPersistPromise = (async () => {
         try {
           await gameRepository.saveGame(summary);
+          await syncGameSummary(summary);
           // บันทึกประวัติทุกตาเดินลง Dexie จริงก่อนรีเซ็ตหรือ freeze state ต่อไป
           await db.moveLogs.bulkPut(get().pendingMoveLogs);
 
