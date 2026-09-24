@@ -68,4 +68,69 @@
     <p class="lead">ระบบจะช่วยระบุช่วงที่ผู้เล่นเสี่ยงผิดพลาดและแนะนำทางเลือกที่ดีกว่าเพื่อพัฒนาการตัดสินใจ</p>
   </div>
 </section>
+<script>
+window.addEventListener('message', async function (event) {
+  const message = event.data;
+  if (!message || message.type !== 'CHESS_GAME_OVER' || !message.payload) return;
+
+  try {
+    const response = await fetch('/api/games', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(message.payload)
+    });
+    if (!response.ok) console.error('บันทึกประวัติเกมไม่สำเร็จ', response.status);
+  } catch (error) {
+    console.error('เชื่อมต่อประวัติเกมไม่สำเร็จ', error);
+  }
+});
+</script>
+{% endblock %}
+<!-- 🎮 เพิ่มปุ่มกดเข้าเล่นเกมตรงนี้ (เพื่อให้คนกดเล่นจากหน้า 1 ได้ทันที) -->
+<section class="panel text-center" style="margin-top: 24px; padding: 32px; background: #1e293b; color: white; border-radius: 16px;">
+  <h2 style="color: #38bdf8; margin-bottom: 8px;">พร้อมประลองฝีมือกับ AI หรือยัง?</h2>
+  <p style="color: #94a3b8; margin-bottom: 20px;">เข้าสู่กระดานหมากรุกสด พร้อมระบบวิเคราะห์ความลน (Panic Meter) และ AI โค้ชภาษาไทย</p>
+  <a 
+    href="https://suphawitka69-sketch.github.io/Chess-with-Ai-Recognization/" 
+    target="_blank" 
+    class="badge good" 
+    style="font-size: 18px; padding: 14px 28px; text-decoration: none; display: inline-block; cursor: pointer;"
+  >
+    ♟️ เข้าสู่สนามประลองหมากรุกสด (Play Chess Live)
+  </a>
+</section>
+
+<!-- =================================================================== -->
+<!-- ⚡ สเต็ป A: ดักฟังผลการแข่งขันจากตัวเกมบน GitHub Pages อัตโนมัติ 100% -->
+<!-- =================================================================== -->
+{% block scripts %}
+<script>
+// สเต็ป A: ฟังก์ชันดักฟังผลการแข่งขันจากหน้าต่างเกม
+window.addEventListener('message', async (event) => {
+  // รับข้อมูลผลเกมเมื่อเล่นจบ
+  if (event.data && event.data.type === 'CHESS_GAME_OVER') {
+    const payload = event.data.payload;
+    console.log('⚡ ได้รับผลการแข่งขันจากกระดานเกม:', payload);
+
+    try {
+      // 1. นำข้อมูลที่ได้รับ ยิงเข้าบันทึกที่หน้า 2 (/page2) เพื่อเซฟลง data.json ทันที
+      const formData = new FormData();
+      for (const key in payload) {
+        formData.append(key, payload[key]);
+      }
+      
+      const response = await fetch('/page2', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (response.ok) {
+        console.log('✅ บันทึกผลเกมลง data.json ในระบบหลักเรียบร้อยแล้ว!');
+      }
+    } catch (err) {
+      console.warn('บันทึกผลเกมอัตโนมัติไม่สำเร็จ:', err);
+    }
+  }
+});
+</script>
 {% endblock %}

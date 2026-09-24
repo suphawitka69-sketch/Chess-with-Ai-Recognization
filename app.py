@@ -145,7 +145,7 @@ def inject_globals():
         "nav": nav(),
         "team": read_json("team.json", {"group": {}, "members": []}),
         "msg": request.args.get("msg", ""),
-        "chess_url": "https://suphawitka69-sketch.github.io/Chess-with-Ai-Recognization/",
+        "chess_url": os.environ.get("CHESS_URL", "http://localhost:5173"),
     }
 
 
@@ -159,7 +159,7 @@ def add_api_headers(response):
     else:
         response = make_response(response)
     response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
     response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
     return response
 
@@ -209,11 +209,13 @@ def game_to_history_row(game):
 @app.route("/api/games", methods=["GET", "POST", "OPTIONS"])
 def api_games():
     if request.method == "OPTIONS":
-        return add_api_headers("")
+        return add_api_headers(""), 200
     if request.method == "GET":
         return add_api_headers({"games": storage.load()})
 
-    game = request.get_json(silent=True)
+    game = request.get_json(silent=True) or request.form
+    if hasattr(game, "to_dict"):
+        game = game.to_dict()
     if not isinstance(game, dict) or not game.get("gameId"):
         return add_api_headers({"error": "gameId is required"}), 400
 
@@ -222,13 +224,15 @@ def api_games():
     replaced = False
     for index, item in enumerate(items):
         if item.get("game_id") == new_row["game_id"]:
+            new_row["id"] = item.get("id", index + 1)
             items[index] = new_row
             replaced = True
             break
     if not replaced:
+        new_row["id"] = len(items) + 1
         items.append(new_row)
     storage.save(items)
-    return add_api_headers({"ok": True, "game": new_row})
+    return add_api_headers({"success": True, "message": "บันทึกเรียบร้อย", "game": new_row}), 200
 
 
 # ---------- routes ----------
