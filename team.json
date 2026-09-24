@@ -1,0 +1,28 @@
+{
+  "group": {
+    "name": "Group 12",
+    "section": "1",
+    "topic": "Chess Analytics & Coaching Hub (ระบบวิเคราะห์และคลังข้อมูลหมากรุกอัจฉริยะ)",
+    "description": "เว็บแอปที่ช่วยวิเคราะห์เกมหมากรุก บันทึกสถิติ และให้คำปรึกษาเชิงระบบสำหรับนักเล่นทุกระดับ"
+  },
+  "members": [
+    {
+      "name": "ศุภวิชญ์ กาญจนหงษ์",
+      "id": "69130740576",
+      "role": "Lead Architect & Engine Specialist",
+      "task": "พัฒนา Web Component และเชื่อมต่อ Stockfish WASM Analytics Engine  ทุกๆอย่าง"
+    },
+    {
+      "name": "จารุวัฒน์ ขันพรม",
+      "id": "69130740392",
+      "role": "Backend & Data Engineer",
+      "task": "QC"
+    },
+    {
+      "name": "กวชิรวิทย์ ภัทรวรวิศิษฏ์",
+      "id": "69130740521",
+      "role": "Frontend & UI Designer",
+      "task": "QC "
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero-box">
+  <div class="two-col">
+    <div>
+      <p class="badge gold">AI Chess Analysis Platform</p>
+      <h1>{{ title }}</h1>
+      <p class="lead">
+        ระบบฝึกฝนหมากรุกแบบเรียลไทม์ที่รวมการวิเคราะห์เกม, AI Coach, Replay, และ Panic Meter
+        เพื่อช่วยให้ผู้เล่นเห็นจุดผิดพลาดและเรียนรู้จากเกมที่เล่นไปจริง ๆ
+      </p>
+      <div class="pills">
+        <span class="badge good">พร้อมใช้งาน</span>
+        <span class="badge">ภาษาไทย</span>
+        <span class="badge">Realtime</span>
+      </div>
+    </div>
+    <div class="panel">
+      <p class="muted">สถานะระบบ</p>
+      <h2>{% if system_ready %}พร้อมใช้งาน{% else %}กำลังปรับปรุง{% endif %}</h2>
+      <p class="lead">AI วิเคราะห์และให้คำแนะนำแบบเรียลไทม์</p>
+      <div class="progress"><div style="width: 98%"></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="stat-grid">
+  {% for item in stats %}
+  <div class="stat {{ item.class }}">
+    <div class="label">{{ item.label }}</div>
+    <div class="value">{{ item.value }}</div>
+  </div>
+  {% endfor %}
+</section>
+
+<section class="panel" style="margin-top: 24px;">
+  <h2>ฟีเจอร์หลัก</h2>
+  <div class="card-grid">
+    {% for feature in features %}
+    <div class="item-card">
+      <div class="body">
+        <span class="badge">{{ feature.tag }}</span>
+        <h3>{{ feature.title }}</h3>
+        <p>{{ feature.detail }}</p>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="two-col" style="margin-top: 24px;">
+  <div class="panel">
+    <h2>โหมดฝึกฝน</h2>
+    <ol>
+      {% for step in coach_steps %}
+      <li>{{ step }}</li>
+      {% endfor %}
+    </ol>
+  </div>
+
+  <div class="panel">
+    <h2>สิ่งที่ระบบช่วยให้เห็น</h2>
+    <div class="pills">
+      <span class="badge bad">Tunnel Vision</span>
+      <span class="badge bad">King Safety</span>
+      <span class="badge bad">Blunder</span>
+    </div>
+    <p class="lead">ระบบจะช่วยระบุช่วงที่ผู้เล่นเสี่ยงผิดพลาดและแนะนำทางเลือกที่ดีกว่าเพื่อพัฒนาการตัดสินใจ</p>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ title }}</h1>
+
+<div class="grid three-col">
+  <div class="panel card">
+    <h3>จำนวนเกม</h3>
+    <div class="stat-value">{{ total_games }}</div>
+  </div>
+  <div class="panel card">
+    <h3>ค่าเฉลี่ยความแม่นยำ</h3>
+    <div class="stat-value">{{ avg_accuracy }}%</div>
+  </div>
+  <div class="panel card">
+    <h3>เกมที่แม่นยำสูง</h3>
+    <div class="stat-value">{{ high_accuracy_count }}</div>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>ประวัติเกม</h2>
+  {% if matches %}
+  <table>
+    <tr>
+      <th>วันที่</th>
+      <th>เกม</th>
+      <th>รูปเปิด</th>
+      <th>ผล</th>
+      <th>ความแม่นยำ</th>
+      <th>Blunders</th>
+    </tr>
+    {% for match in matches %}
+    <tr>
+      <td>{{ match.date }}</td>
+      <td>{{ match.white }} vs {{ match.black }}</td>
+      <td>{{ match.opening }}</td>
+      <td><span class="badge {{ match.get_result_badge()['color'] }}">{{ match.get_result_badge()['label'] }}</span></td>
+      <td>{{ match.accuracy }}%</td>
+      <td>{{ match.blunders }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <div class="empty">ยังไม่มีเกมที่บันทึก</div>
+  {% endif %}
+</div>
+
+<div class="panel">
+  <h2>บันทึกเกมใหม่</h2>
+  <form method="post" class="stacked-form">
+    <div class="field">
+      <label for="game_id">Game ID</label>
+      <input id="game_id" name="game_id" placeholder="g_04">
+    </div>
+    <div class="field">
+      <label for="date">วันที่</label>
+      <input id="date" name="date" type="date">
+    </div>
+    <div class="field">
+      <label for="white">White</label>
+      <input id="white" name="white" placeholder="Player (คุณ)">
+    </div>
+    <div class="field">
+      <label for="black">Black</label>
+      <input id="black" name="black" placeholder="Stockfish Level 5">
+    </div>
+    <div class="field">
+      <label for="opening">รูปเปิด</label>
+      <input id="opening" name="opening" placeholder="Italian Game">
+    </div>
+    <div class="field">
+      <label for="eco">ECO</label>
+      <input id="eco" name="eco" placeholder="C50">
+    </div>
+    <div class="field">
+      <label for="result">ผลการแข่งขัน</label>
+      <select id="result" name="result">
+        <option value="1-0">1-0</option>
+        <option value="0-1">0-1</option>
+        <option value="1/2-1/2">1/2-1/2</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="accuracy">ความแม่นยำ (%)</label>
+      <input id="accuracy" name="accuracy" type="number" step="0.1" min="0" max="100" placeholder="82.5">
+    </div>
+    <div class="field">
+      <label for="blunders">Blunders</label>
+      <input id="blunders" name="blunders" type="number" min="0" placeholder="1">
+    </div>
+    <div class="field">
+      <label for="notes">บันทึก</label>
+      <textarea id="notes" name="notes" rows="3" placeholder="สรุปเกมที่สังเกตได้..."></textarea>
+    </div>
+    <button class="btn" type="submit">บันทึกเกม</button>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,117 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run Chess Game",
+			"type": "shell",
+			"command": "npm run dev -- --host 0.0.0.0",
+			"isBackground": true,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Find Node",
+			"type": "shell",
+			"command": "where.exe node; where.exe npm; Get-Command node, npm -ErrorAction SilentlyContinue | Select-Object Source",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Locate node.exe",
+			"type": "shell",
+			"command": "Get-ChildItem C:\\ -Filter node.exe -Recurse -ErrorAction SilentlyContinue -Force | Select-Object -First 20 -ExpandProperty FullName",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Locate npm.cmd",
+			"type": "shell",
+			"command": "Get-ChildItem C:\\ -Filter npm.cmd -Recurse -ErrorAction SilentlyContinue -Force | Select-Object -First 20 -ExpandProperty FullName",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Check winget",
+			"type": "shell",
+			"command": "winget --version",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Install Node.js LTS",
+			"type": "shell",
+			"command": "winget install -e --id OpenJS.NodeJS.LTS --source winget --accept-source-agreements --accept-package-agreements",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Verify Node install",
+			"type": "shell",
+			"command": "node -v; npm -v",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Locate installed Node",
+			"type": "shell",
+			"command": "Get-ChildItem \"C:\\Program Files\\nodejs\" | Select-Object Name, FullName",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Locate installed Node2",
+			"type": "shell",
+			"command": "Get-ChildItem \"C:/Program Files/nodejs\" | Select-Object Name, FullName",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Find Node path 8dot3",
+			"type": "shell",
+			"command": "Get-ChildItem C:/PROGRA~1/nodejs | Select-Object Name, FullName",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Install frontend deps",
+			"type": "shell",
+			"command": "C:/PROGRA~1/nodejs/npm.cmd install",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Run Chess Game UI",
+			"type": "shell",
+			"command": "C:/PROGRA~1/nodejs/npm.cmd run dev -- --host 0.0.0.0",
+			"isBackground": true,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Run Chess Game UI fixed PATH",
+			"type": "shell",
+			"command": "$env:Path += ';C:\\Program Files\\nodejs'; C:/PROGRA~1/nodejs/npm.cmd run dev -- --host 0.0.0.0",
+			"isBackground": true,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Reinstall frontend cleanly",
+			"type": "shell",
+			"command": "$env:Path += ';C:\\Program Files\\nodejs'; Remove-Item -Recurse -Force node_modules -ErrorAction SilentlyContinue; C:/PROGRA~1/nodejs/npm.cmd install",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		}
+	]
+}

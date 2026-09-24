@@ -1,0 +1,443 @@
+# Chess Analytics Platform — System Architecture & Technical Specification
+> **Document Phase:** Phase 0 (Blueprint & Ground Truth)  
+> **Status:** Active Reference for Human Engineers & Coding Agents  
+> **Target Environment:** Client-Side Web Widget (Embedded / Offline-First)
+
+---
+
+## 1. Core Architecture & Tech Stack
+
+### 1.1 ปรัชญาการออกแบบและข้อจำกัดหลัก (Constraints)
+1. **Embeddable Widget:** ต้องฝังลงในเว็บเดิมได้โดยไม่กระทบ Routing หรือ CSS ของเว็บแม่ จึงเลือกบรรจุทั้งแอปเป็น Web Component (`<chess-coach>`) ครอบ React Root ไว้ภายใน Shadow DOM
+2. **Offline-First / Zero-Backend DB:** ไม่มีเซิร์ฟเวอร์ฐานข้อมูล สถานะและประวัติการเล่นทั้งหมดถูกบันทึกในเครื่องผู้ใช้ผ่าน IndexedDB (จัดการด้วย Dexie.js)
+3. **Engine Multi-Threading & Fallback:** Stockfish WASM ต้องใช้ `SharedArrayBuffer` ซึ่งต้องการ Header `Cross-Origin-Opener-Policy: same-origin` และ `Cross-Origin-Embedder-Policy: require-corp` โดยระบบต้องมี Feature Detection เพื่อ Fallback เป็น Single-Thread ทันทีหาก Header ไม่พร้อม
+4. **Clean Architecture & Dependency Rules:**
+   $$\text{features} \longrightarrow \text{hooks} \longrightarrow \text{state} \longrightarrow \text{core / data}$$
+   * **กฎเหล็ก:** `src/core/` ต้องเป็น Pure TypeScript เท่านั้น ห้าม Import React, DOM, หรือ Zustand เด็ดขาด
+
+### 1.2 Tech Stack Matrix
+| ชั้นงาน (Layer) | เทคโนโลยี | วัตถุประสงค์และเหตุผล |
+| :--- | :--- | :--- |
+| **Build System** | Vite 6 + TypeScript 5 | Library Mode บิลด์เป็น `chess-widget.js` และ `chess-widget.css` |
+| **UI Framework** | React 18 | Ecosystem หมากรุกสมบูรณ์ที่สุด |
+| **Web Container** | Web Component Custom Element | Shadow DOM ป้องกันการชนกันของ Global CSS |
+| **Chess Rules** | `chess.js` v1.x | ตรวจสอบกติกา FIDE ครบถ้วน (En Passant, 50-move, Threefold, Insufficient) |
+| **Board Renderer** | `react-chessboard` v4 | รองรับ SVG Custom Arrows, Square Highlights และ Heatmap Overlay |
+| **Engine Core** | `stockfish.wasm` (SF16 NNUE) | รันใน Web Worker แยก 2 Instances (Play vs Analysis) ไม่บล็อก UI Thread |
+| **State Management**| Zustand 4/5 (+ Immer) | แยก Store ขาดจากกันระหว่าง Main Game และ Analysis Sandbox |
+| **Client Database** | Dexie.js (IndexedDB wrapper) | ทำ Schema Versioning, Auto-Migration และ Indexed Query ประสิทธิภาพสูง |
+| **Data Viz** | Recharts | เรนเดอร์กราฟ Eval Curve และ Progress Tracking |
+| **Opening Book** | ECO JSON + Lichess Masters | ระบุชื่อ Opening แบบ Offline + Cache สถิติเกมระดับมาสเตอร์ |
+
+---
+
+## 2. Project File Structure
+
+```text
+chess-coach/
+├── public/
+│   └── engine/                      # Stockfish WASM artifacts (ห้าม bundle รวม)
+│       ├── sf16-mt.js / .wasm       # Multi-threaded build (~3000+ Elo)
+│       └── sf16-single.js / .wasm   # Single-threaded fallback (~2600 Elo)
+│
+├── src/
+│   ├── main.ts                      # Entry: Define Custom Element <chess-coach> (Shadow DOM)
+│   ├── App.tsx                      # Root Navigator (Play / Analysis / Profile)
+│   │
+│   ├── core/                        # ── โซนบริสุทธิ์: Pure TS ห้ามมี React/DOM ──
+│   │   ├── chess/
+│   │   │   ├── GameEngine.ts        # ครอบ chess.js, Legal Moves, Game Result
+│   │   │   ├── Clock.ts             # Fischer Increment, Flag-Fall, Timestamp-based
+│   │   │   └── notation.ts          # SAN / UCI / FEN / PGN Parsers
+│   │   ├── engine/
+│   │   │   ├── UciProtocol.ts       # Parser: UciInfo (score.kind, pv), UciBestMove (bestMove)
+│   │   │   ├── EngineWorker.ts      # Web Worker wrapper + Promise queue
+│   │   │   ├── EnginePool.ts        # แยก PlayEngine และ AnalysisEngine อิสระ
+│   │   │   └── strengthPresets.ts   # Strength Ladder mapping (Skill Level, Elo, Depth, Movetime)
+│   │   ├── telemetry/
+│   │   │   ├── MoveTracker.ts       # Ref buffer บันทึก Click, Cancel, Hover, Blur ต่อตา
+│   │   │   ├── PanicCalculator.ts   # คำนวณ Panic Score (0-100) ด้วยสูตร EMA Smooth
+│   │   │   └── events.ts            # Discriminated union ของ Telemetry Events
+│   │   └── analysis/
+│   │       ├── GameAnalyzer.ts      # Orchestrator วิเคราะห์ทั้งเกม (Batch Analysis)
+│   │       ├── classifier.ts        # Centipawn loss -> Brilliant, Best, Mistake, Blunder
+│   │       ├── VariationTree.ts     # โครงสร้าง Tree สำหรับ Sandbox จำลองสายแยก
+│   │       └── winProbability.ts    # แปลง Centipawn -> Win % (Sigmoid Function)
+│   │
+│   ├── data/
+│   │   ├── db.ts                    # Dexie Schema v1 + Database Instance
+│   │   └── repositories/            # Data Access Objects (Games, MoveLogs, Profile)
+│   │
+│   ├── state/                       # Zustand Stores
+│   │   ├── useGameStore.ts          # Main Game State (เล่นสด, Append-only, Freeze เมื่อจบ)
+│   │   ├── useSandboxStore.ts       # Analysis Sandbox State (แยกขาด, In-Memory Only, ห้ามเซฟลง DB)
+│   │   ├── useAnalysisStore.ts      # Hydration จาก Dexie + Trigger Batch Analysis
+│   │   ├── useEngineStore.ts        # จัดการ Lifecycle และ Instance ของ EnginePool
+│   │   └── useUiStore.ts            # UI Toggles, Modals, Overlays
+│   │
+│   ├── features/                    # React Presentation Layer
+│   │   ├── play/                    # PlayScreen, BoardContainer, ChessClock, PanicMeter
+│   │   ├── gameover/                # GameOverModal ([รับการสอน], [เล่นอีกครั้ง])
+│   │   ├── analysis/                # AnalysisScreen, EvalChart, MoveList, SandboxBoard
+│   │   └── profile/                 # ProfileScreen, ProgressGraph, StyleRadar
+│   │
+│   └── shared/
+│       ├── types/
+│       │   └── schema.ts            # Source of Truth สำหรับ JSON & Database Schema ทั้งระบบ
+│       └── utils/
+│
+└── vite.config.ts                   # Library mode configuration, COOP/COEP Dev Headers
+```
+
+---
+
+## 3. Data Contracts & JSON Schema Specification
+
+### 3.1 Schema 1: Per-Move Behavioral & Engine Log (`MoveLogRecord`)
+จัดเก็บ 1 Record ต่อ 1 Ply (ครึ่งตาเดิน) บันทึกทั้งผู้เล่นและ AI ลงตาราง `moveLogs`:
+
+```typescript
+export interface MoveLogRecord {
+  readonly moveId: string;           // Key: `${gameId}_${color}_${ply}` (เช่น g_01_w_001)
+  readonly gameId: string;
+  readonly ply: number;              // ครึ่งตา เริ่มที่ 1
+  readonly moveNumber: number;       // หมายเลขตาเดิน (Math.ceil(ply / 2))
+  readonly color: 'w' | 'b';
+  readonly actor: 'human' | 'engine' | 'ghost';
+
+  readonly position: {
+    readonly fenBefore: string;
+    readonly fenAfter: string;
+    readonly san: string;
+    readonly uci: string;
+    readonly piece: string;
+    readonly captured: string | null;
+    readonly isCheck: boolean;
+    readonly phase: 'opening' | 'middlegame' | 'endgame';
+    readonly materialBalance: number; // แต้มผลต่าง (ขาวบวก ดำลบ: Q=9, R=5, B=3, N=3, P=1)
+    readonly legalMoveCount: number;  // จำนวนตาเดินที่เป็นไปได้ก่อนเดินตานี้
+  };
+
+  readonly timing: {
+    readonly thinkTimeMs: number;
+    readonly clockRemainingMs: number;
+    readonly incrementMs: number;
+    readonly timePressureRatio: number;        // thinkTimeMs / Math.max(clockRemainingMs, 1)
+    readonly deviationFromPersonalAvg: number; // z-score เทียบค่าเฉลี่ยตนเอง (default: 0)
+    readonly idleBeforeFirstTouchMs: number;
+  };
+
+  readonly behavior: {
+    readonly pieceSelections: readonly { square: string; atMs: number; cancelled: boolean }[];
+    readonly totalClicks: number;
+    readonly distinctPiecesTouched: number;
+    readonly repeatClickSamePiece: number;
+    readonly selectionCancelCount: number;
+    readonly hoverHeatmap: Readonly<Record<string, number>>;
+    readonly dragDistancePx: number;
+    readonly tabBlurCount: number;
+    readonly hesitationIndex: number;
+  };
+
+  // เป็น null ระหว่างเล่นเกมจริง — ถูก Backfill หลังจบเกมโดย GameAnalyzer
+  readonly engine?: {
+    readonly analyzed: true;
+    readonly depth: number;
+    readonly evalBefore: { readonly type: 'cp' | 'mate'; readonly value: number };
+    readonly evalAfter: { readonly type: 'cp' | 'mate'; readonly value: number };
+    readonly bestMove: string;
+    readonly bestLinePv: readonly string[];
+    readonly playedRank: number | null; // null หากอยู่นอกขอบเขต MultiPV ที่วิเคราะห์
+    readonly centipawnLoss: number;
+    readonly winProbBefore: number;
+    readonly winProbAfter: number;
+    readonly classification: 'brilliant'|'great'|'best'|'good'|'inaccuracy'|'mistake'|'blunder'|'forced';
+    readonly alternatives: readonly {
+      readonly uci: string;
+      readonly san: string;
+      readonly cp: number;
+      readonly loss: number;
+      readonly consequence: string | null; // null สำหรับ Phase 3 (รอ LLM ใน Phase 4)
+    }[];
+    readonly tacticalMotifs: readonly string[]; // [] ใน Phase 3
+  } | null;
+
+  readonly psych: {
+    readonly panicScore: number;     // 0 - 100
+    readonly panicDelta: number;
+    readonly confidenceProxy: number;
+    readonly triggerFlags: readonly string[];
+  };
+
+  readonly context: {
+    readonly ecoCode: string | null;
+    readonly openingName: string | null;
+    readonly inBook: boolean;
+    readonly masterFrequency: number | null;
+    readonly opponentPrevMoveUci: string | null;
+    readonly opponentIntent: string | null;
+  };
+}
+```
+
+### 3.2 Schema 2: Game Record & Profile
+บันทึกลงตาราง `games`:
+
+```typescript
+export interface GameSummaryRecord {
+  readonly gameId: string;
+  readonly schemaVersion: number;
+  readonly startedAt: string;        // ISO 8601
+  readonly endedAt: string;          // ISO 8601
+  readonly setup: {
+    readonly playerColor: 'w' | 'b';
+    readonly opponent: {
+      readonly type: 'stockfish' | 'ghost_self';
+      readonly level: number | null;
+      readonly label: string;
+      readonly uciElo: number | null;
+      readonly skillLevel: number | null;
+      readonly moveTimeMs: number | null;
+      readonly ghostSourceProfileSnapshot: string | null;
+    };
+    readonly timeControl: { readonly baseMs: number; readonly incrementMs: number; readonly label: string };
+  };
+  readonly result: {
+    readonly outcome: 'win' | 'loss' | 'draw';
+    readonly termination: 'checkmate'|'stalemate'|'threefold_repetition'|'insufficient_material'|'fifty_move_rule'|'resignation'|'timeout';
+    readonly totalPlies: number;
+    readonly finalFen: string;
+  };
+  readonly pgn: string;
+  readonly accuracy: {
+    readonly playerAccuracyPct: number;
+    readonly avgCentipawnLoss: number;
+    readonly counts: { readonly brilliant: number; readonly great: number; readonly best: number; readonly good: number; readonly inaccuracy: number; readonly mistake: number; readonly blunder: number };
+    readonly phaseAccuracy: { readonly opening: number; readonly middlegame: number; readonly endgame: number };
+  } | null;
+  readonly criticalMoments: readonly {
+    readonly ply: number;
+    readonly type: 'brilliant'|'great'|'best'|'good'|'inaccuracy'|'mistake'|'blunder'|'forced';
+    readonly centipawnLoss: number;
+    readonly fenBefore: string;
+    readonly playedSan: string;
+    readonly bestSan: string;
+    readonly winProbSwing: number;
+    readonly behaviorSnapshot: { readonly thinkTimeMs: number; readonly panicScore: number; readonly repeatClickSamePiece: number };
+    readonly lessonId: string | null;
+    readonly rootCause: string | null;
+  }[];
+  readonly behaviorSummary: {
+    readonly avgThinkTimeMs: number;
+    readonly thinkTimeStdDev: number;
+    readonly totalHesitationEvents: number;
+    readonly avgPanicScore: number;
+    readonly peakPanicScore: number;
+    readonly peakPanicPly: number;
+    readonly movesUnder3Sec: number;
+    readonly movesOver30Sec: number;
+    readonly timeScrambleMoves: number;
+  };
+  readonly openings: {
+    readonly ecoCode: string | null;
+    readonly name: string | null;
+    readonly bookDepthPlies: number;
+    readonly firstDeviationPly: number | null;
+    readonly deviationQuality: string | null;
+  } | null;
+  readonly traps: {
+    readonly trapsFallenInto: readonly { ply: number; name: string; warnedByRadar: boolean; ignoredWarning: boolean }[];
+    readonly trapsSet: readonly unknown[];
+    readonly trapsMissed: readonly { ply: number; name: string }[];
+  } | null;
+}
+```
+
+### 3.3 Dexie Schema
+```typescript
+db.version(1).stores({
+  games:    'gameId, startedAt, [setup.opponent.level+startedAt], result.outcome',
+  moveLogs: 'moveId, gameId, [gameId+ply], position.fenBefore',
+  lessons:  'lessonId, gameId, ply',
+  profile:  'profileId',
+  bookCache:'fenKey, fetchedAt'
+});
+```
+
+---
+
+## 4. State Architecture & Control Flow
+
+### 4.1 State Isolation: Main Game vs. Analysis Sandbox
+ความสมบูรณ์ของประวัติการเล่นต้องได้รับการปกป้อง 100% กระดานเล่นจริงกับกระดานจำลองต้องใช้ Chess Instance แยกกันเด็ดขาด
+
+```mermaid
+flowchart TD
+    subgraph LiveGame ["โหมดเล่นสด (Live Game)"]
+        A["MAIN GAME STORE\n(useGameStore)\n- chess.js Instance A\n- clock, moveHistory"]
+    end
+
+    subgraph PersistStage ["สิ้นสุดเกมจริง"]
+        B["GameRepository\n(persist + freeze)"]
+        C["GameAnalyzer\n(EnginePool Batch)"]
+        D["Analysis Result\n(IndexedDB Read-Only)"]
+    end
+
+    subgraph AnalysisMode ["โหมดวิเคราะห์ (Analysis)"]
+        E["SANDBOX STORE\n(useSandboxStore)\n- chess.js Instance B (Clone FEN)\n- VariationTree (สายแยก)"]
+        F["ProfileRepository\n(merge style + habits)"]
+        G["ทิ้ง State ใน Memory\n(ห้าม Persist ลง Dexie เด็ดขาด)"]
+    end
+
+    A -->|จบเกม| B
+    B --> C
+    C --> D
+    D -->|เลือก ply เพื่อลองเดิน| E
+    D --> F
+    E -->|ผู้เล่นลองเดินสายแยก / กด Reset / ออก| G
+```
+
+#### กฎการควบคุม Sandbox:
+1. **Append-Only Living:** `useGameStore` มีสถานะเป็น Append-only ตลอดการเล่น เมื่อจบเกม ข้อมูลจะถูกบันทึกลง IndexedDB แล้ว Freeze ทันที
+2. **Total Memory Isolation:** `useSandboxStore` ทำงานบน Memory เท่านั้น โคลน FEN มาจากจุดที่เลือก แล้วสร้างกิ่งก้านการเดินผ่าน `VariationTree`
+3. **No Database Writeback:** ห้ามมีคำสั่งใดๆ บันทึกข้อมูลจาก Sandbox กลับลง `games` หรือ `moveLogs` ใน Dexie
+4. **Lifecycle Cleanup:** เมื่อผู้เล่นออกจากหน้าวิเคราะห์ Component `AnalysisScreen` ต้องเรียก `sandboxActions.exit()` เพื่อทำลาย Tree และ Instance B ทิ้งทันที
+
+---
+
+### 4.2 Telemetry Data Flow
+การเก็บข้อมูลพฤติกรรมความลนและปฏิสัมพันธ์ของผู้เล่นต้อง **ไม่กระทบต่อ Frame Rate (60 FPS)** ของกระดาน
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Player as ผู้เล่น
+    participant Board as BoardContainer
+    participant Tracker as MoveTracker (useRef Buffer)
+    participant Calc as PanicCalculator
+    participant Store as TelemetryStore
+    participant DB as IndexedDB (Dexie)
+
+    Note over Board,Tracker: เริ่มต้นตาเดินใหม่
+    Board->>Tracker: tracker.startMoveTurn(clockRemainingMs)
+    
+    Player->>Board: hover ช่อง f3
+    Board->>Tracker: buffer hover (ไม่กระตุ้น re-render)
+    
+    Player->>Board: click เลือกหมาก -> กดยกเลิก (Cancel)
+    Board->>Tracker: recordCancel(square)
+    
+    loop ทุกๆ 500ms (Throttled)
+        Tracker->>Calc: getLiveCounts() -> PanicCalculator.calculate(...)
+        Calc->>Store: setPanicScore(score)
+        Store-->>Board: PanicMeter UI อัปเดตเข็มวัดความลน
+    end
+
+    Player->>Board: ปล่อยหมาก (Drop Piece)
+    Board->>Tracker: flushMoveTelemetry(thinkTimeMs, clockRemainingMs)
+    Tracker->>Store: push MoveLogRecord (เฉพาะ behavioral fields)
+    
+    Note over Store,DB: จบเกม (GameOver)
+    Store->>DB: bulkPut(pendingMoveLogs) พร้อม eval: null (รอวิเคราะห์ทีหลัง)
+```
+
+#### สูตรการคำนวณ Panic Score (0 - 100):
+$$\text{Panic} = \text{clamp}\left(0, 100, \, 25 \cdot C_{\text{cancel}} + 20 \cdot C_{\text{repeat}} + 25 \cdot C_{\text{clock}} + 15 \cdot C_{\text{think}} + 15 \cdot C_{\text{eval}}\right)$$
+
+* $C_{\text{cancel}} = \text{clamp01}\left(\frac{\text{selectionCancelCount}}{4}\right)$
+* $C_{\text{repeat}} = \text{clamp01}\left(\frac{\text{repeatClickSamePiece}}{3}\right)$
+* $C_{\text{clock}} = \text{clamp01}\left(1 - \frac{\text{clockRemaining}}{0.25 \times \text{baseTime}}\right)$ (เวลาเหลือน้อยกว่า 25%)
+* $C_{\text{think}} = \text{clamp01}\left(\frac{\text{thinkTime}}{3 \times \text{personalAvgThinkTime}}\right)$
+* $C_{\text{eval}} = \text{clamp01}\left(\frac{-\Delta\text{Eval}_{3\text{moves}}}{200}\right)$ (สถานการณ์เสียเปรียบต่อเนื่อง)
+* *หมายเหตุ:* กรองตัวเลขขั้นสุดท้ายด้วย Exponential Moving Average (EMA, $\alpha = 0.3$) ป้องกันเข็มวัดกระตุก
+
+---
+
+### 4.3 Engine Strength Ladder
+ควบคุมผ่าน UCI Options บน `playEngine` (แยกคนละ Worker กับ `analysisEngine`):
+
+| ระดับ (Level) | ชื่อระดับ | UCI Skill Level | UCI_Elo | Depth | Movetime Cap | เทคนิคควบคุมความผิดพลาด (Noise) |
+| :---: | :--- | :---: | :---: | :---: | :---: | :--- |
+| **1** | เริ่มต้น | 0 | 1320 | 1 | 100 ms | สุ่มเลือกตาเดินจาก Top-8 MultiPV |
+| **2** | ฝึกหัด | 3 | 1500 | 3 | 200 ms | สุ่มเลือกตาเดินจาก Top-5 MultiPV |
+| **3** | ปานกลาง | 6 | 1700 | 5 | 400 ms | สุ่มเลือกตาเดินจาก Top-3 MultiPV |
+| **4** | ค่อนข้างยาก | 10 | 1900 | 8 | 700 ms | เดินตาที่ดีที่สุด (Top-1) |
+| **5** | ยาก | 14 | 2100 | 12 | 1000 ms | เดินตาที่ดีที่สุด (Top-1) |
+| **6** | มืออาชีพ | 17 | 2400 | 16 | 1500 ms | ใช้ Opening Book (ECO) |
+| **7** | แกรนด์มาสเตอร์| 20 | 2850 | 20 | 2000 ms | ใช้ Opening Book (ECO) |
+| **8** | ไร้ขีดจำกัด | 20 | off | 24+ | 3000 ms | NNUE กำลังเต็มพิกัด |
+| **G** | Ghost ของคุณ | — | — | — | — | เลียนแบบจาก `habitPatterns` ในอดีต |
+
+---
+
+## 5. Post-Game Analysis Pipeline & Protocol Alignment
+
+### 5.1 การเชื่อมต่อระหว่าง UciProtocol และ Schema
+หลีกเลี่ยงการเกิด Type Mismatch ใน `src/core/analysis/GameAnalyzer.ts`:
+1. **UciScore Mapping:**
+   * ใน `UciProtocol.ts` ใช้โครงสร้าง: `{ kind: 'cp' | 'mate', value: number }`
+   * ใน `schema.ts` ใช้โครงสร้าง: `EvalScore { type: 'cp' | 'mate', value: number }`
+   * **การแปลง Perspective:**
+     $$\text{White POV Value} = (\text{sideToMove} == \text{'w'}) \; ? \; \text{score.value} : -\text{score.value}$$
+     ```typescript
+     const evalScore: EvalScore = {
+       type: uciScore.kind, // แปลงจาก .kind เป็น .type
+       value: whitePovValue,
+     };
+     ```
+2. **Best Move Resolution:**
+   * ดึง UCI String จาก `bestMove.bestMove` (ไม่ใช่ `.uci`)
+   * แปลงเป็น SAN ผ่าน Chess instance จริง:
+     ```typescript
+     const bestSan = new Chess(fenBefore).move(bestUci).san;
+     ```
+3. **Mate Conversion to Centipawns (ใน `MoveAlternative.cp`):**
+   ```typescript
+   const cpValue = score.kind === 'mate'
+     ? (score.value > 0 ? 10000 - score.value * 100 : -10000 - score.value * 100)
+     : score.value;
+   ```
+
+### 5.2 การควบคุมความเร็วในการวิเคราะห์ (Batch Performance)
+* ในระหว่าง Batch Analysis หลังจบเกม **ห้ามวิเคราะห์ลึกเกินความจำเป็น**
+* กำหนดค่ามาตรฐานในการ Batch: **`depth: 12`** และ **`movetimeMs: 400`** ต่อตาเดิน เพื่อให้เกมความยาว 20–40 ตา วิเคราะห์เสร็จสิ้นภายใน **8–15 วินาที** แทนการปล่อยลึกจนค้างเกิน 1 นาที
+
+---
+
+## 6. Implementation Roadmap
+
+```text
+[Phase 1: Playable Core] ────────► [Phase 2: Telemetry & Dexie] ────────► [Phase 3: Analysis Automation]
+        (DONE)                                (DONE)                                  (DONE)
+  - Vite + Web Component                - MoveTracker (Buffer)                  - Batch GameAnalyzer
+  - GameEngine (chess.js)               - PanicCalculator EMA                   - EvalChart & MoveList
+  - Timestamp Clock                     - MoveLog Persistence                   - Hydration / F5 Cache
+  - EnginePool (MT/ST)                  - IndexedDB Schema v1                   - Sandbox Isolation
+                                                                                         │
+                                                                                         ▼
+[Phase 5: Profiling & Ghost] ◄─────────────────────────────────────────── [Phase 4: Pedagogical LLM Layer]
+        (PLANNED)                                                                    (NEXT STEP)
+  - StyleRadar (8 แกน)                                                    - Serverless Proxy (/api/explain)
+  - GM Similarity Cosine                                                  - PromptBuilder (Data -> Prompt)
+  - HabitMiner Pattern Detection                                          - Thai Explanation Templates
+  - Ghost Mode (Past Self)                                                - TrapRadar Realtime Alerts
+```
+
+---
+
+## 7. Strict Guidelines for AI Coding Agents in VS Code
+
+เมื่อทำงานกับโปรเจกต์นี้ Coding Agent (เช่น Copilot, Claude, Sol) ต้องปฏิบัติตามกฎนี้โดยเคร่งครัด:
+
+1. **Source of Truth Rule:** โค้ดจริงและการประกาศ Type ใน `src/shared/types/schema.ts` คือความจริงสูงสุด ห้ามคาดเดาโครงสร้าง Object จากคอมเมนต์หรือความจำ
+2. **Zero-Type-Bypassing:** ห้ามใช้ `as any`, `as MoveLogRecord`, `as EvalScore` หรือ Type Assertion เพื่อกลบข้อผิดพลาด Type ต้องแก้ไขที่ Root Cause ของ Data Pipeline เสมอ
+3. **Anti-Mocking Policy:** ห้ามใส่ค่าสตริงว่าง `''`, `0`, `null`, หรือ `'unknown'` เข้าไปในฟิลด์ Required ของ Schema หากโมดูลต้นทางไม่มีข้อมูลดิบจริง ให้รายงาน Blocker เชิงสถาปัตยกรรมทันที
+4. **Architectural Nullability Exception:** ฟิลด์เชิงความหมายของ AI ในอนาคต (Phase 4) ได้แก่ `consequence: string | null`, `rootCause: string | null`, และ `playedRank: number | null` ได้รับการรับรองให้อนุญาตให้เป็น `null` ใน Phase 3 Engine Analysis
+5. **Sandbox Isolation Protection:** ห้ามมีคำสั่งใดๆ สั่งบันทึกข้อมูลของ `useSandboxStore` ลงสู่ IndexedDB เด็ดขาด
+6. **Clean Architecture Boundary:** ห้าม Import โมดูล UI, React หรือ Store เข้าไปในโฟลเดอร์ `src/core/`
+7. **Verification Standard:** หลังการแก้ไขทุกครั้ง ต้องรันการตรวจสอบ 2 ชั้น:
+   ```powershell
+   npx.cmd tsc --noEmit
+   npm.cmd run build
+   ```
+   และต้องผ่านโดยมีข้อผิดพลาดเป็น 0 ก่อนส่งมอบงานเสมอ

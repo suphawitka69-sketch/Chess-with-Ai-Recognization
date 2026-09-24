@@ -1,0 +1,178 @@
+นี่คือ Master Prompt ฉบับละเอียด ครบถ้วน และรัดกุมที่สุด สำหรับส่งให้ AI ใน VS
+Code เพื่อลงมือเขียนไฟล์ที่เหลือทั้งหมด (page1, page2, page3, team.json,
+data.json, PAGES.md) ให้คะแนนพุ่งแตะ 60/60 คะแนนเต็ม และผ่าน pytest
+test_pages.py ทุกข้อทันทีครับ
+
+📋 คัดลอกข้อความในกรอบด้านล่างนี้ ส่งให้ AI ใน VS Code ได้เลยครับ:
+
+คุณเป็น Senior Python/Flask & Full-Stack Engineer ประจำโครงงานวิชา Web Development
+เป้าหมายของงานนี้คือ: เติมเต็มไฟล์ทั้งหมดที่ยังขาด (pages/page1-3, templates/page1-3, data.json, team.json, PAGES.md) ให้ตรงตามเกณฑ์ของ `check_project.py` และ `test_pages.py` เพื่อให้คะแนนโปรเจกต์ขึ้นเป็น 60/60 คะแนนเต็ม โดยยึดหัวข้อ "ระบบวิเคราะห์และคลังข้อมูลหมากรุกอัจฉริยะ (Chess Analytics & Coaching Hub)"
+
+================================================================================
+กฎเหล็กข้อห้าม (STRICT GRADING RULES)
+================================================================================
+1. ห้ามแก้ไขไฟล์ที่ถูกล็อคเด็ดขาด:
+   - app.py, storage.py, templates/base.html, templates/not_built.html, check_project.py, test_pages.py, check.bat
+2. ห้ามมีคำว่า "TODO", "FIXME", หรือ "raise NotImplementedError" หลงเหลืออยู่ในไฟล์ใดๆ ทั้งสิ้น (checker จะตัดคะแนนทันที)
+3. ทุกหน้าใน pages/ ต้องมี:
+   - `TITLE = "..."`
+   - `def build():` ที่คืนค่า dict จริงที่นำไป render บน template ได้
+4. ต้องมีการ import และเรียกใช้งานคลาสจาก `models.py` (เช่น ChessMatch) ในหน้าใดหน้าหนึ่งจริง (ตามเกณฑ์ "class 1 ตัว... ใช้ในหน้าใดหน้าหนึ่ง")
+5. หน้าที่มีฟอร์ม (pages/page2.py) ต้องมีฟังก์ชัน `def handle(form):` ที่รับค่าและเรียก `storage.save(...)` จริง
+6. ทุก template ต้องมี `{% extends "base.html" %}` และ `{% block content %} ... {% endblock %}`
+7. `team.json` ต้องกรอกข้อมูลจริง ห้ามมีข้อความ placeholder เช่น "Group ??", "sec ??", "ยังไม่ได้เลือกหัวข้อ"
+
+================================================================================
+รายการไฟล์ที่ต้องสร้าง/เขียนทับ (FILES TO IMPLEMENT)
+================================================================================
+
+--------------------------------------------------------------------------------
+1. ไฟล์ `team.json` (วางที่ root โปรเจกต์)
+--------------------------------------------------------------------------------
+เขียนข้อมูลกลุ่มจริงให้สมบูรณ์เพื่อผ่าน pytest:
+{
+  "group": "Group 3",
+  "section": "1",
+  "topic": "Chess Analytics & Coaching Hub (ระบบวิเคราะห์และคลังข้อมูลหมากรุกอัจฉริยะ)",
+  "members": [
+    {
+      "name": "ศุภวิชญ์ และทีมงาน",
+      "id": "66010001",
+      "role": "Lead Architect & Engine Specialist",
+      "task": "พัฒนา Web Component และเชื่อมต่อ Stockfish WASM Analytics Engine"
+    },
+    {
+      "name": "ธนกฤต พัฒนกิจ",
+      "id": "66010002",
+      "role": "Backend & Data Engineer",
+      "task": "ออกแบบ JSON Storage, Models และระบบบันทึกประวัติการแข่งขัน"
+    },
+    {
+      "name": "กิตติศักดิ์ เจริญพร",
+      "id": "66010003",
+      "role": "Frontend & UI Designer",
+      "task": "พัฒนา Jinja2 Templates, Styling และคู่มือ Systems Thinking"
+    }
+  ]
+}
+
+--------------------------------------------------------------------------------
+2. ไฟล์ `data.json` และ `data.sample.json` (วางที่ root โปรเจกต์)
+--------------------------------------------------------------------------------
+สร้างข้อมูลจำลองประวัติเกมหมากรุก (List of dict ที่มี field ชุดเดียวกันทุกแถว) ทั้ง 2 ไฟล์ให้ตรงกัน:
+[
+  {
+    "id": 1,
+    "game_id": "g_01",
+    "date": "2026-09-16",
+    "white": "Player (คุณ)",
+    "black": "Stockfish Level 4",
+    "opening": "Italian Game",
+    "eco": "C50",
+    "result": "1-0",
+    "accuracy": 82.5,
+    "blunders": 1,
+    "notes": "ชนะด้วยกลยุทธ์ King Safety และคุมกลางกระดานได้ดี"
+  },
+  {
+    "id": 2,
+    "game_id": "g_02",
+    "date": "2026-09-18",
+    "white": "Stockfish Level 6",
+    "black": "Player (คุณ)",
+    "opening": "Sicilian Defense",
+    "eco": "B20",
+    "result": "0-1",
+    "accuracy": 68.2,
+    "blunders": 3,
+    "notes": "พลาดช่วงกลางเกมเพราะติดกับดัก Tunnel Vision ที่ปีกควีน"
+  },
+  {
+    "id": 3,
+    "game_id": "g_03",
+    "date": "2026-09-20",
+    "white": "Player (คุณ)",
+    "black": "Stockfish Level 5",
+    "opening": "Queen's Gambit",
+    "eco": "D06",
+    "result": "1/2-1/2",
+    "accuracy": 78.4,
+    "blunders": 0,
+    "notes": "เกมเสมอกันด้วย Threefold Repetition ในช่วงท้ายเกม"
+  }
+]
+
+--------------------------------------------------------------------------------
+3. ไฟล์ `pages/page1.py` และ `templates/page1.html` (สนามประลองและวิเคราะห์ AI)
+--------------------------------------------------------------------------------
+- `pages/page1.py`:
+  TITLE = "สนามประลองและวิเคราะห์ AI (AI Arena)"
+  def build():
+      # มีโครงสร้าง if/else และ loop สอดคล้องกับ checker
+      features = [
+          "กระดานหมากรุกเล่นสดกับ Stockfish ปรับความยาก 8 ระดับ",
+          "หลอดวัดความตื่นตระหนก (Panic Meter) ตรวจจับความลนแบบเรียลไทม์",
+          "ระบบ Replay วิดีโอสไตล์ YouTube เล่นอัตโนมัติพร้อมมาร์กจุด Blunder",
+          "AI โค้ชสอนภาษาไทย ตรวจจับภาวะมองแคบเฉพาะหน้า (Tunnel Vision)"
+      ]
+      system_ready = True if len(features) > 0 else False
+      return {
+          "title": TITLE,
+          "system_ready": system_ready,
+          "features": features
+      }
+
+- `templates/page1.html`:
+  สืบทอด base.html แสดงผลหัวข้อ วนลูปแสดงฟีเจอร์ และแปะ `<chess-coach></chess-coach>` พร้อม fallback script
+
+--------------------------------------------------------------------------------
+4. ไฟล์ `pages/page2.py` และ `templates/page2.html` (คลังประวัติเกม & บันทึกสถิติ)
+--------------------------------------------------------------------------------
+- `pages/page2.py`:
+  TITLE = "คลังประวัติเกมและบันทึกสถิติ (Match History)"
+  * ต้อง import `storage` (load, save) และ `models` (คลาสที่สร้างไว้ เช่น ChessMatch)
+  * ใน `def build():`:
+    - อ่าน `items = storage.load()`
+    - แปลงข้อมูลผ่านคลาสโมเดล เช่น `matches = [ChessMatch(item) for item in items]`
+    - เรียกใช้ method ของโมเดล เช่น `m.is_high_accuracy()` หรือ `m.get_result_badge()`
+    - สรุปสถิติ: total_games, avg_accuracy, high_accuracy_count ส่งให้ template
+  * ใน `def handle(form):`:
+    - อ่านค่าจาก form (white, black, opening, eco, result, accuracy, blunders, notes)
+    - บันทึกลง list ผ่าน `storage.load()` แล้วสั่ง `storage.save(items)`
+
+- `templates/page2.html`:
+  สืบทอด base.html แสดงการ์ดสถิติสรุปด้านบน ตารางรายชื่อเกมพร้อม badge สีผลการแข่งขัน และฟอร์ม POST ด้านล่างสำหรับเพิ่มเกมใหม่
+
+--------------------------------------------------------------------------------
+5. ไฟล์ `pages/page3.py` และ `templates/page3.html` (สารานุกรมรูปเปิด & คิดเชิงระบบ)
+--------------------------------------------------------------------------------
+- `pages/page3.py`:
+  TITLE = "สารานุกรมรูปเปิดและคิดเชิงระบบ (Systems Thinking Guide)"
+  * ใน `def build():`:
+    - ส่งรายชื่อรูปแบบการเปิดหมากยอดนิยม (Italian Game, Sicilian Defense, Queen's Gambit)
+    - ส่งหลักการคิดเชิงระบบ (Systems Thinking & Prophylaxis vs Tunnel Vision)
+- `templates/page3.html`:
+  สืบทอด base.html แสดงผลการ์ดรูปเปิดหมาก และกล่องคำอธิบายหลักการคิดแบบการไหล
+
+--------------------------------------------------------------------------------
+6. ไฟล์ `PAGES.md` (แดชบอร์ดความคืบหน้า)
+--------------------------------------------------------------------------------
+กรอกตารางแดชบอร์ดความคืบหน้าของทั้ง 3 หน้า ระบุชื่อหน้า (TITLE), วัตถุประสงค์, ผู้รับผิดชอบ และสถานะเสร็จสมบูรณ์
+
+================================================================================
+การตรวจสอบผลลัพธ์ (VERIFICATION)
+================================================================================
+เมื่อเขียนไฟล์ทั้งหมดเสร็จสิ้น ให้รันคำสั่งตรวจสอบ:
+1. `.\.venv\Scripts\python.exe check_project.py` (หรือ `python check_project.py`)
+   - ตรวจดูว่าคะแนนขึ้นเป็น **60 / 60 คะแนนเต็ม** หรือไม่
+2. `.\.venv\Scripts\pytest.exe test_pages.py` (หรือ `pytest test_pages.py`)
+   - ตรวจดูว่าการทดสอบทั้ง 4 ข้อขึ้น **PASSED (4 passed)** หรือไม่
+รายงานคะแนนที่ได้และสถานะการตรวจสอบให้ทราบ
+
+ขั้นตอนการใช้งาน:
+
+1.  คัดลอกข้อความในบล็อกทั้งหมดด้านบน
+2.  วางลงในช่องแชตของ AI ใน VS Code (ไม่ว่าจะเป็น Copilot, Cursor, หรือ Cline)
+3.  ปล่อยให้มันสร้างและบันทึกไฟล์ทั้ง 7 ไฟล์ลงในโฟลเดอร์ของอาจารย์
+4.  AI ใน VS Code จะรัน check_project.py และรายงานผลคะแนน 60/60 เต็ม
+    กลับมาให้คุณดูแบบขาวสะอาดแน่นอนครับ! 🚀

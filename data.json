@@ -1,0 +1,41 @@
+[
+  {
+    "id": 1,
+    "game_id": "g_01",
+    "date": "2026-09-16",
+    "white": "Player (คุณ)",
+    "black": "Stockfish Level 4",
+    "opening": "Italian Game",
+    "eco": "C50",
+    "result": "1-0",
+    "accuracy": 82.5,
+    "blunders": 1,
+    "notes": "ชนะด้วยกลยุทธ์ King Safety และคุมกลางกระดานได้ดี"
+  },
+  {
+    "id": 2,
+    "game_id": "g_02",
+    "date": "2026-09-18",
+    "white": "Stockfish Level 6",
+    "black": "Player (คุณ)",
+    "opening": "Sicilian Defense",
+    "eco": "B20",
+    "result": "0-1",
+    "accuracy": 68.2,
+    "blunders": 3,
+    "notes": "พลาดช่วงกลางเกมเพราะติดกับดัก Tunnel Vision ที่ปีกควีน"
+  },
+  {
+    "id": 3,
+    "game_id": "g_03",
+    "date": "2026-09-20",
+    "white": "Player (คุณ)",
+    "black": "Stockfish Level 5",
+    "opening": "Queen's Gambit",
+    "eco": "D06",
+    "result": "1/2-1/2",
+    "accuracy": 78.4,
+    "blunders": 0,
+    "notes": "เกมเสมอกันด้วย Threefold Repetition ในช่วงท้ายเกม"
+  }
+]

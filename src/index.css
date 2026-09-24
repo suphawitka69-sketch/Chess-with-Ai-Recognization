@@ -1,0 +1,35 @@
+/**
+ * index.css
+ * ---------------------------------------------------------------------------
+ * จุดเข้าเดียวของ Tailwind สำหรับทั้ง widget — ไฟล์นี้ถูก import สองแบบ
+ * แยกจุดประสงค์กัน:
+ *   1. `main.ts` import แบบ `?inline` เพื่อเอาเนื้อหาเป็น string มาฉีดเข้า
+ *      <style> ภายใน Shadow Root โดยตรง (ดูเหตุผลใน vite-env.d.ts)
+ *   2. Vite build pipeline (ผ่าน vite.config.ts: cssCodeSplit:false +
+ *      assetFileNames) ยัง extract CSS ก้อนนี้ออกเป็น chess-widget.css แยก
+ *      ไว้ด้วย เผื่อผู้ใช้ปลายทางอยากโหลด/cache แยกจาก JS เอง
+ *
+ * ต้องมี tailwind.config.js ที่ตั้ง `content` ให้ครอบคลุม `src/**\/*.{ts,tsx}`
+ * และ postcss.config.js ที่เปิดใช้ tailwindcss + autoprefixer อยู่คู่กัน
+ * (ไฟล์ config มาตรฐานสองไฟล์นี้ไม่ได้รวมอยู่ในชุดนี้ เพราะเป็น scaffolding
+ * ปกติของโปรเจกต์ Tailwind ทั่วไป ไม่ได้มี logic เฉพาะของระบบนี้)
+ * ---------------------------------------------------------------------------
+ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* รีเซ็ตเบื้องต้นสำหรับ root ของ widget ภายใน Shadow DOM — กัน host site's
+   global CSS (ถ้าหลุดรอดเข้ามาทาง inherited property เช่น font-family บน
+   body) ทำให้หน้าตา widget เพี้ยนไปจากที่ออกแบบไว้ */
+.chess-coach-root {
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  color-scheme: dark;
+}
