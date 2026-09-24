@@ -143,7 +143,7 @@ def inject_globals():
         "nav": nav(),
         "team": read_json("team.json", {"group": {}, "members": []}),
         "msg": request.args.get("msg", ""),
-        "chess_url": "http://localhost:5173",
+        "chess_url": "https://suphawitka69-sketch.github.io/Chess-with-Ai-Recognization/",
     }
 
 
