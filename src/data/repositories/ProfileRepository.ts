@@ -18,8 +18,8 @@
 
 import { db } from '../db';
 import { GmSimilarity } from '../../core/profiling/GmSimilarity';
-import { mineHabits, mineHabitsFromMoveLogs } from '../../core/profiling/HabitMiner';
-import type { BehaviorSummary, GameSummaryRecord, MoveLogRecord, PlayerProfileRecord, StyleVector } from '../../shared/types/schema';
+import { mineHabits } from '../../core/profiling/HabitMiner';
+import type { BehaviorSummary, GameSummaryRecord, MoveLogEngine, MoveLogRecord, PlayerProfileRecord, StyleVector } from '../../shared/types/schema';
 
 export class ProfileRepositoryError extends Error {
   constructor(message: string, public readonly cause?: unknown) {
@@ -97,7 +97,6 @@ export class ProfileRepository {
 
       const orderedGames = [...validGames].sort((left, right) => (left.startedAt ?? '').localeCompare(right.startedAt ?? ''));
       const logsByGame = groupMoveLogsByGame(moveLogs.filter((log) => !!log && typeof log === 'object' && typeof log.gameId === 'string'));
-      const habits = mineHabitsFromMoveLogs(moveLogs.filter((log) => !!log && typeof log === 'object' && typeof log.gameId === 'string'));
       const record = { w: 0, l: 0, d: 0 };
       let estimatedElo = DEFAULT_ESTIMATED_ELO;
       let totalMoves = 0;
@@ -132,11 +131,14 @@ export class ProfileRepository {
           divergence: [...match.divergence],
         }));
 
-      const validMoveLogs = moveLogs.filter((log): log is MoveLogRecord => !!log && typeof log === 'object' && typeof log.gameId === 'string');
-      const humanColors = [...new Set(validMoveLogs.filter((log) => log.actor === 'human').map((log) => log.color))];
+      const analyzedMoveLogs = moveLogs.filter(
+        (log): log is MoveLogRecord & { readonly engine: MoveLogEngine } =>
+          !!log && typeof log === 'object' && typeof log.gameId === 'string' && log.engine?.analyzed === true,
+      );
+      const humanColors = [...new Set(analyzedMoveLogs.filter((log) => log.actor === 'human').map((log) => log.color))];
       const playerColor = humanColors[0] ?? 'w';
       const habitInsight = mineHabits(
-        validMoveLogs
+        analyzedMoveLogs
           .filter((log) => log.actor === 'human' || log.actor === 'engine' || log.actor === 'ghost')
           .map((log) => ({
             gameId: log.gameId,
@@ -171,7 +173,7 @@ export class ProfileRepository {
         },
         styleVector,
         grandmasterSimilarity,
-        habitPatterns: habits,
+        habitPatterns: habitInsight.patterns,
         opponentReadings: {},
         progression,
         weaknessRanking: habitInsight.weaknessRanking,

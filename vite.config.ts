@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [react()],
 
   build: {
+    outDir: 'docs', // 👈 เพิ่มบรรทัดนี้ เพื่อให้มันบิลด์ไปลงโฟลเดอร์ docs
     target: 'es2020',
     sourcemap: true,
     minify: 'esbuild',

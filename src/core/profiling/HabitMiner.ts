@@ -119,7 +119,7 @@ export class HabitMinerError extends Error {
 
 const DEFAULT_CONFIG: Required<HabitMinerConfig> = {
   lowClockThresholdMs: 60_000,
-  minSampleSize: 3,
+  minSampleSize: 2,
   minTriggerRepetition: 2,
   greedyCaptureCentipawnLossThreshold: 40,
   reactiveResponseLookaheadPlies: 1,

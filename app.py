@@ -141,18 +141,19 @@ def back_to(name, msg=None):
 
 @app.context_processor
 def inject_globals():
-    chess_url = os.environ.get("CHESS_URL", "").strip()
-    is_local_host = request.host.startswith(("localhost", "127.0.0.1"))
-    if is_local_host:
-        chess_url = chess_url or "http://localhost:5173"
-    elif not chess_url or chess_url.startswith("http://localhost"):
-        chess_url = "https://supawitka69-sketch.github.io/Chess-with-Ai-Recognization/"
+    # ✅ กำหนดให้ชี้ไปที่ GitHub Pages ของตัวเกมเสมอ (มีตัว h: suphawit)
+    chess_url = os.environ.get(
+        "CHESS_URL", 
+        "https://suphawitka69-sketch.github.io/Chess-with-Ai-Recognization/"
+    ).strip()
+
     return {
         "nav": nav(),
         "team": read_json("team.json", {"group": {}, "members": []}),
         "msg": request.args.get("msg", ""),
         "chess_url": chess_url,
     }
+    
 
 
 def not_built(name, reason, detail=""):
