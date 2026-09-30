@@ -1,12 +1,26 @@
 """pages/page2.py — match history and analytics page."""
-import storage
+import json
+import os
+from urllib.request import Request, urlopen
+
 from models import ChessMatch
 
 TITLE = "คลังประวัติเกมและบันทึกสถิติ (Match History)"
+BACKEND_URL = os.environ.get(
+    "BACKEND_URL",
+    "https://chess-with-ai-recognization.onrender.com",
+).strip().rstrip("/")
+
+
+def load_games():
+    request = Request(f"{BACKEND_URL}/api/games", headers={"Accept": "application/json"})
+    with urlopen(request, timeout=5) as response:
+        payload = json.load(response)
+    return payload.get("games", [])
 
 
 def build():
-    items = storage.load()
+    items = load_games()
     matches = []
     total_accuracy = 0.0
     high_accuracy_count = 0

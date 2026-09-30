@@ -146,12 +146,17 @@ def inject_globals():
         "CHESS_URL", 
         "https://suphawitka69-sketch.github.io/Chess-with-Ai-Recognization/"
     ).strip()
+    backend_url = os.environ.get(
+        "BACKEND_URL",
+        "https://chess-with-ai-recognization.onrender.com",
+    ).strip().rstrip("/")
 
     return {
         "nav": nav(),
         "team": read_json("team.json", {"group": {}, "members": []}),
         "msg": request.args.get("msg", ""),
         "chess_url": chess_url,
+        "backend_url": backend_url,
     }
     
 

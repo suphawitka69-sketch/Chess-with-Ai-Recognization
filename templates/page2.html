@@ -55,9 +55,11 @@
 </div>
 
 <script>
+const backendUrl = {{ backend_url|tojson }};
+
 async function refreshMatchHistory() {
   try {
-    const response = await fetch('/api/games', { cache: 'no-store' });
+    const response = await fetch(`${backendUrl}/api/games`, { cache: 'no-store' });
     if (!response.ok) return;
     const data = await response.json();
     const serverSignature = (data.games || [])
@@ -72,9 +74,12 @@ async function refreshMatchHistory() {
   }
 }
 
-window.addEventListener('message', event => {
-  if (event.data && event.data.type === 'CHESS_GAME_OVER') {
-    window.setTimeout(refreshMatchHistory, 500);
+window.addEventListener('message', async event => {
+  if (!event.data || event.data.type !== 'CHESS_GAME_OVER' || !event.data.payload) return;
+  try {
+    await refreshMatchHistory();
+  } catch (err) {
+    console.warn('รีเฟรชประวัติเกมจาก Chess Coach ไม่สำเร็จ:', err);
   }
 });
 

@@ -27,7 +27,7 @@
     {% for p in nav %}
       <a href="{{ url_for('page', name=p.name) }}" class="{{ 'active' if request.path == '/' + p.name }}">{{ p.title }}</a>
     {% endfor %}
-    <a href="{{ chess_url }}" target="_blank" rel="noopener noreferrer">เล่นเกมหมากรุก</a>
+    <a href="{{ chess_url }}" onclick="window.open(this.href, 'chess-coach'); return false;">เล่นเกมหมากรุก</a>
   </nav>
 </header>
 
