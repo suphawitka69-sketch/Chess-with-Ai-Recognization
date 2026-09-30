@@ -38,6 +38,34 @@
     </div>
   </div>
 
+  <section class="habit-profile mb-5" aria-labelledby="habitProfileTitle">
+    <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3">
+      <div>
+        <h4 id="habitProfileTitle" class="fw-bold text-dark mb-1">🧠 {{ habit_profile.headline }}</h4>
+        <p class="small text-muted mb-0">{{ habit_profile.detail }}</p>
+      </div>
+      {% if habit_profile.has_data %}
+      <span class="badge bg-light text-dark border">ข้อมูล {{ habit_profile.sample_count }} เกม</span>
+      {% endif %}
+    </div>
+
+    {% if habit_profile.habits %}
+    <div class="row g-3">
+      {% for habit in habit_profile.habits %}
+      <div class="col-md-6">
+        <div class="habit-signal h-100">
+          <div class="fw-bold text-dark mb-1">{{ habit.title }}</div>
+          <div class="small text-muted mb-2">{{ habit.evidence }}</div>
+          <div class="small text-primary">แนวฝึก: {{ habit.recommendation }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="habit-empty">ยังไม่พบรูปแบบนิสัยที่เกิดซ้ำ ระบบจะไม่เดานิสัยจากข้อมูลที่ยังไม่พอ</div>
+    {% endif %}
+  </section>
+
   <!-- =================================================================== -->
   <!-- ⚡ ส่วนที่ 1: ฟีดแนะนำสำหรับคุณโดยเฉพาะ (YouTube For You Feed) -->
   <!-- =================================================================== -->
@@ -46,8 +74,11 @@
       <h4 class="fw-bold text-dark mb-0">⚡ วิดีโอแนะนำสำหรับคุณโดยเฉพาะ (Recommended Feed)</h4>
       <span class="badge bg-danger rounded-pill">Personalized AI</span>
     </div>
-    <p class="small text-muted mb-3">ระบบคัดเลือกวิดีโอเหล่านี้โดยวิเคราะห์จากสถิติเกม ประวัติการแพ้ และจุดอ่อนในโปรไฟล์ของคุณ</p>
+    <p class="small text-muted mb-3">ระบบคัดเลือกวิดีโอจากนิสัยที่ตรวจพบในประวัติการเล่นของคุณ</p>
 
+    {% if not personalized_feed %}
+    <div class="habit-empty mb-3">ยังไม่มีคลิปเฉพาะบุคคล เพราะยังไม่มีประวัติเกมให้วิเคราะห์</div>
+    {% endif %}
     <div class="row g-4">
       {% for item in personalized_feed %}
       <div class="col-lg-6">
@@ -177,9 +208,12 @@
 let currentCategory = "ทั้งหมด";
 
 function filterChessOpenings() {
-  const query = document.getElementById("chessSearchInput").value.toLowerCase().trim();
+  const input = document.getElementById("chessSearchInput");
+  const query = (input ? input.value : "").toLocaleLowerCase("th").trim();
   const cards = document.querySelectorAll(".opening-card-wrapper");
   const forYouSec = document.getElementById("forYouSection");
+  const openingsGrid = document.getElementById("openingsGrid");
+  const noResults = document.getElementById("noResultsAlert");
   let visibleCount = 0;
 
   // ซ่อนฟีดส่วนตัวถ้ากำลังพิมพ์ค้นหาคำเฉพาะเจาะจง
@@ -190,8 +224,8 @@ function filterChessOpenings() {
   }
 
   cards.forEach(card => {
-    const searchText = card.getAttribute("data-search").toLowerCase();
-    const cardCategory = card.getAttribute("data-category");
+    const searchText = (card.getAttribute("data-search") || "").toLocaleLowerCase("th");
+    const cardCategory = card.getAttribute("data-category") || "";
 
     const matchesQuery = query === "" || searchText.includes(query);
     const matchesCategory = currentCategory === "ทั้งหมด" || currentCategory === "⚡ แนะนำสำหรับคุณ" || cardCategory === currentCategory;
@@ -204,12 +238,10 @@ function filterChessOpenings() {
     }
   });
 
-  const noResults = document.getElementById("noResultsAlert");
-  if (visibleCount === 0) {
-    noResults.classList.remove("d-none");
-  } else {
-    noResults.classList.add("d-none");
+  if (noResults) {
+    noResults.classList.toggle("d-none", visibleCount !== 0);
   }
+  if (openingsGrid) openingsGrid.classList.toggle("d-none", currentCategory === "⚡ แนะนำสำหรับคุณ");
 }
 
 function filterByCategory(category, element) {
@@ -225,9 +257,9 @@ function filterByCategory(category, element) {
   const forYouSec = document.getElementById("forYouSection");
   if (category === "⚡ แนะนำสำหรับคุณ") {
     if (forYouSec) forYouSec.classList.remove("d-none");
-    document.getElementById("openingsGrid").classList.add("d-none");
+    const openingsGrid = document.getElementById("openingsGrid");
+    if (openingsGrid) openingsGrid.classList.add("d-none");
   } else {
-    document.getElementById("openingsGrid").classList.remove("d-none");
     filterChessOpenings();
   }
 }

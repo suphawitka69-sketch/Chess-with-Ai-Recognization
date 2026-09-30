@@ -52,68 +52,10 @@ def build():
         }
     ]
 
-    # 2. ⚡ YouTube Recommendation Engine: อ่านประวัติการเล่นจริงจาก data.json
+    # 2. วิเคราะห์นิสัยจากประวัติจริงก่อนจัดอันดับคลิปแนะนำ
     raw_history = load()
-    personalized_feed = []
-
-    if len(raw_history) > 0:
-        # ✅ วนลูปย้อนกลับจาก "เกมล่าสุด" (reversed) เพื่อหาเกมที่แพ้ หรือเกมที่มี Blunder
-        target_game = None
-        for game in reversed(raw_history):
-            # ตรวจสอบว่าผู้เล่นเป็นฝ่ายแพ้หรือไม่ (หรือมี blunder >= 1)
-            is_player_white = "คุณ" in str(game.get("white", ""))
-            is_player_black = "คุณ" in str(game.get("black", ""))
-            result = str(game.get("result", ""))
-
-            player_lost = (is_player_white and result == "0-1") or (is_player_black and result == "1-0")
-            has_blunders = game.get("blunders", 0) >= 1
-
-            if player_lost or has_blunders or game.get("accuracy", 100) < 75.0:
-                target_game = game
-                break
-
-        # ถ้าไม่เจอเกมที่แพ้เลย ให้หยิบเกมล่าสุดมาวิเคราะห์พัฒนาต่อยอด
-        if not target_game:
-            target_game = raw_history[-1]
-
-        # ค้นหาว่ารูปเปิดของเกมเป้าหมายตรงกับคลิปไหนในคลัง
-        matched = next((op for op in all_openings if op["eco"] == target_game.get("eco")), all_openings[0])
-
-        # ปรับข้อความแท็กให้สอดคล้องกับผลการแข่งขันจริง
-        result = str(target_game.get("result", ""))
-        is_player_white = "คุณ" in str(target_game.get("white", ""))
-        player_won = (is_player_white and result == "1-0") or (not is_player_white and result == "0-1")
-
-        if player_won:
-            feed_tag = "⭐ ต่อยอดชัยชนะในรูปเปิดนี้ (Mastery)"
-            tag_color = "success"
-        else:
-            feed_tag = "🎯 แนะนำเพื่อแก้มือ (Revenge Match)"
-            tag_color = "danger"
-
-        # A. การ์ดแนะนำอันดับ 1: อิงจากเกมล่าสุดที่คัดกรองมา
-        personalized_feed.append({
-            **matched,
-            "feed_tag": feed_tag,
-            "feed_reason": f"วิเคราะห์จากเกมล่าสุด (วันที่ {target_game.get('date', '2026-09-24')}) รูป {matched['name']} มีจังหวะผิดพลาด {target_game.get('blunders', 0)} Blunders (ความแม่นยำ {target_game.get('accuracy', 75)}%)",
-            "tag_color": tag_color
-        })
-
-        # B. การ์ดแนะนำอันดับ 2: อิงจากจิตวิทยาและการคิดเชิงระบบ (Systems Thinking)
-        personalized_feed.append({
-            **all_openings[2],
-            "feed_tag": "🧠 แนะนำเพื่อปรับวิธีคิดเชิงระบบ (Prophylaxis)",
-            "feed_reason": "วิดีโอฝึกการวางหมากป้องกันล่วงหน้า ช่วยแก้จุดอ่อนจากการผลักเบี้ยดับเพลิงเฉพาะหน้า (Tunnel Vision)",
-            "tag_color": "primary"
-        })
-    else:
-        # กรณีเพิ่งเริ่มเล่น ยังไม่มีประวัติ: ขึ้นคลิปยอดนิยมเป็นพื้นฐาน
-        personalized_feed.append({
-            **all_openings[0],
-            "feed_tag": "🔥 คลิปยอดนิยมสำหรับเริ่มต้น",
-            "feed_reason": "เรียนรู้รูปแบบ Italian Game เพื่อวางรากฐานการพัฒนาตัวหมากที่ดีที่สุด",
-            "tag_color": "primary"
-        })
+    habit_profile = build_habit_profile(raw_history)
+    personalized_feed = build_personalized_feed(all_openings, raw_history, habit_profile)
 
     # หมวดหมู่สำหรับ Filter Chips
     categories = ["ทั้งหมด", "⚡ แนะนำสำหรับคุณ", "สายบุกเร็ว", "สายตั้งรับเชิงรุก", "สายคุมโครงสร้าง"]
@@ -123,5 +65,74 @@ def build():
         "all_openings": all_openings,
         "personalized_feed": personalized_feed,
         "categories": categories,
-        "total_openings": len(all_openings)
+        "total_openings": len(all_openings),
+        "habit_profile": habit_profile,
     }
+
+
+def build_habit_profile(history):
+    """สรุปเฉพาะนิสัยที่มีหลักฐานจากเกมจริง ไม่ฟันธงเมื่อข้อมูลยังน้อยเกินไป."""
+    if not history:
+        return {
+            "has_data": False,
+            "sample_count": 0,
+            "headline": "ยังไม่มีข้อมูลนิสัยเพียงพอ",
+            "detail": "เล่นและบันทึกอย่างน้อย 3 เกมก่อน ระบบจึงจะเริ่มจับรูปแบบการเล่นซ้ำๆ",
+            "habits": [],
+        }
+
+    total = len(history)
+    blunder_games = sum(int(game.get("blunders", 0) or 0) > 0 for game in history)
+    low_accuracy_games = sum(float(game.get("accuracy", 100) or 100) < 75 for game in history)
+    panic_games = sum("กดดัน" in str(game.get("notes", "")) for game in history)
+    tunnel_games = sum("Tunnel Vision" in str(game.get("notes", "")) for game in history)
+    habits = []
+
+    if blunder_games or low_accuracy_games or panic_games:
+        habits.append({
+            "key": "time_pressure",
+            "title": "ตัดสินใจพลาดเมื่อเกมกดดัน",
+            "evidence": f"พบเกมที่มี blunder/ความแม่นยำต่ำ {max(blunder_games, low_accuracy_games, panic_games)} จาก {total} เกม",
+            "recommendation": "ฝึกหยุดเช็กความปลอดภัยของคิงและการตอบโต้ก่อนเดิน",
+            "opening_id": "italian",
+        })
+    if tunnel_games:
+        habits.append({
+            "key": "tunnel_vision",
+            "title": "โฟกัสการบุกด้านเดียวจนพลาดการตอบโต้",
+            "evidence": f"บันทึกเกมที่ระบุ Tunnel Vision {tunnel_games} จาก {total} เกม",
+            "recommendation": "ฝึกมองภัยคุกคามของคู่ต่อสู้ก่อนเดินแผนของตัวเอง",
+            "opening_id": "sicilian",
+        })
+
+    return {
+        "has_data": True,
+        "sample_count": total,
+        "headline": "คำแนะนำจากนิสัยการเล่นของคุณ",
+        "detail": "ระบบใช้ข้อมูลเกมที่บันทึกไว้เท่านั้น และจะแสดงนิสัยเมื่อพบสัญญาณซ้ำ",
+        "habits": habits,
+    }
+
+
+def build_personalized_feed(all_openings, history, habit_profile):
+    if not history:
+        return []
+
+    feed = []
+    for habit in habit_profile["habits"]:
+        opening = next(item for item in all_openings if item["id"] == habit["opening_id"])
+        feed.append({
+            **opening,
+            "feed_tag": f"แนะนำจากนิสัย: {habit['title']}",
+            "feed_reason": f"{habit['evidence']} เหมาะกับคลิปนี้เพื่อ{habit['recommendation']}",
+            "tag_color": "danger" if habit["key"] == "time_pressure" else "primary",
+        })
+
+    if not feed:
+        feed.append({
+            **all_openings[2],
+            "feed_tag": "แนะนำเพื่อพัฒนาต่อ",
+            "feed_reason": "ยังไม่พบจุดอ่อนที่เกิดซ้ำชัดเจน จึงแนะนำการคุมโครงสร้างและวางแผนล่วงหน้า",
+            "tag_color": "success",
+        })
+    return feed
